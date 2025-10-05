@@ -65,7 +65,7 @@ const ENDINGS: Record<string, Record<string, string[]>> = {
     'ere': {
         'Indicativo Presente': ['o', 'i', 'e', 'iamo', 'ete', 'ono'],
         'Indicativo Imperfetto': ['evo', 'evi', 'eva', 'evamo', 'evate', 'evano'],
-        'Indicativo Passato Remoto': ['ei', 'esti', 'é', 'emmo', 'este', 'erono'],
+        'Indicativo Passato Remoto': ['ei', 'esti', 'é', 'emmo', 'este', 'erono'], // Note: some sources use -etti. Sticking to one for now.
         'Indicativo Futuro Semplice': ['erò', 'erai', 'erà', 'eremo', 'erete', 'eranno'],
         'Congiuntivo Presente': ['a', 'a', 'a', 'iamo', 'iate', 'ano'],
         'Congiuntivo Imperfetto': ['essi', 'essi', 'esse', 'essimo', 'este', 'essero'],
@@ -95,13 +95,24 @@ const DOUBLE_PRONOUNS_FIRST = ['me', 'te', 'se', 'ce', 've', 'se'];
 
 const commonEssereVerbs = new Set(['essere', 'stare', 'andare', 'venire', 'entrare', 'uscire', 'partire', 'tornare', 'nascere', 'morire', 'piacere', 'sembrare', 'diventare', 'rimanere', 'restare', 'salire', 'scendere', 'cadere']);
 
+const irregularEreSubgroups: Record<string, { pp_ending: string, pr_stem_ending: string }> = {
+    'cendere':   { pp_ending: 'ceso', pr_stem_ending: 'ces' },
+    'difendere': { pp_ending: 'feso', pr_stem_ending: 'fes' },
+    'offendere': { pp_ending: 'feso', pr_stem_ending: 'fes' },
+    'pendere':   { pp_ending: 'peso', pr_stem_ending: 'pes' },
+    'prendere':  { pp_ending: 'preso', pr_stem_ending: 'pres' },
+    'rendere':   { pp_ending: 'reso', pr_stem_ending: 'res' },
+    'tendere':   { pp_ending: 'teso', pr_stem_ending: 'tes' },
+};
+
+
 export function guessVerbInfo(infinitive: string): VerbInfo {
     const pronominalEndings: VerbInfo['pronounType'][] = ['sela', 'sene', 'cela', 'si', 'ci', 'ne', 'la'];
     for (const ending of pronominalEndings) {
         if (infinitive.endsWith(ending)) {
             // Reconstruct base infinitive, e.g., "alzarsi" -> "alzare", "farsi" -> "fare"
             const baseInfinitiveStem = infinitive.slice(0, -ending.length);
-            const baseInfinitive = baseInfinitiveStem + 'e';
+            const baseInfinitive = baseInfinitiveStem + (baseInfinitiveStem.endsWith('r') ? 'e' : 're');
 
             const baseInfo = guessVerbInfo(baseInfinitive); // Recursive call with correct base infinitive
             
@@ -137,6 +148,23 @@ export function guessVerbInfo(infinitive: string): VerbInfo {
     else if (infinitive.endsWith('ere')) group = 'ere';
     else if (infinitive.endsWith('ire')) group = 'ire';
     
+    // Check for irregular -ere subgroups
+    if (group === 'ere') {
+        for (const ending in irregularEreSubgroups) {
+            if (infinitive.endsWith(ending)) {
+                const stem = infinitive.slice(0, -ending.length);
+                const rules = irregularEreSubgroups[ending];
+                return {
+                    infinitive,
+                    group: 'ere',
+                    auxiliary: 'avere', // Most of these take 'avere'
+                    participioPassato: stem + rules.pp_ending,
+                    passatoRemotoStem: stem + rules.pr_stem_ending,
+                };
+            }
+        }
+    }
+
     return {
         infinitive,
         group,
@@ -276,6 +304,42 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
         return conjugatePronominal(verbInfo, tense);
     }
 
+    const tenseInfo = TENSE_INFO[tense];
+    if (!tenseInfo) return [];
+
+    // --- Handle compound tenses first for ALL verbs ---
+    if (tenseInfo.type === 'compound') {
+        const participio = getParticipioPassato(verbInfo);
+        
+        const auxTense = tenseInfo.auxTense;
+        const auxVerbInfo = guessVerbInfo(auxiliary);
+        const auxConjugation = conjugate(auxVerbInfo, auxTense);
+
+        if (auxiliary === 'avere') {
+            return auxConjugation.map(aux => `${aux} ${participio}`);
+        } else { // auxiliary is 'essere'
+            if (!participio.endsWith('o')) {
+                // Invariable participio, just combine
+                return auxConjugation.map(aux => `${aux} ${participio}`);
+            }
+            
+            const participioStem = participio.slice(0, -1);
+            
+            // Participle agrees with subject for 'essere' verbs
+            return auxConjugation.map((aux, index) => {
+                // 0: io, 1: tu, 2: lui/lei -> singular masculine
+                // 3: noi, 4: voi, 5: loro -> plural masculine
+                if (index < 3) { 
+                    return `${aux} ${participioStem}o`; // e.g., sono stato
+                } else { 
+                    return `${aux} ${participioStem}i`; // e.g., siamo stati
+                }
+            });
+        }
+    }
+
+    // --- Handle simple tenses ---
+
     const handleParticipioPassato = (participio: string): string[] => {
         if (participio.endsWith('o')) {
             const stem = participio.slice(0, -1);
@@ -294,6 +358,7 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
         return [participio, plurale];
     };
 
+    // Handle simple tenses for 'essere' and 'avere'
     if (group === 'essere') {
         if (tense === 'Participio Passato') return handleParticipioPassato(ESSERE['Participio Passato'][0]);
         if (tense === 'Participio Presente') return handleParticipioPresente(ESSERE['Participio Presente'][0]);
@@ -305,22 +370,30 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
         return AVERE[tense as keyof typeof AVERE] || [];
     }
 
-    const tenseInfo = TENSE_INFO[tense];
-    if (!tenseInfo) return [];
+    // Handle irregular Passato Remoto
+    if (tense === 'Indicativo Passato Remoto' && verbInfo.passatoRemotoStem) {
+        const irregularStem = verbInfo.passatoRemotoStem;
+        const regularStem = verbInfo.infinitive.slice(0, -3);
 
-    if (tenseInfo.type === 'compound') {
-        const auxVerb = auxiliary === 'essere' ? ESSERE : AVERE;
-        const auxConjugation = auxVerb[tenseInfo.auxTense as keyof typeof auxVerb];
-        const participio = getParticipioPassato(verbInfo);
-        
-        // Basic compound tense, doesn't handle agreement for 'essere' verbs yet
-        return auxConjugation.map(aux => `${aux} ${participio}`);
+        const regularEndings = ENDINGS[group as 'are' | 'ere' | 'ire']['Indicativo Passato Remoto'];
+        if (!regularEndings) return [];
+
+        return [
+            irregularStem + 'i',                // io (1sg)
+            regularStem + regularEndings[1],    // tu (2sg) - regular
+            irregularStem + 'e',                // lui/lei (3sg)
+            regularStem + regularEndings[3],    // noi (1pl) - regular
+            regularStem + regularEndings[4],    // voi (2pl) - regular
+            irregularStem + 'ero',              // loro (3pl)
+        ];
     }
 
+    // Handle special simple tenses that are not person-based
     if (tense === 'Participio Passato') {
         return handleParticipioPassato(getParticipioPassato(verbInfo));
     }
-
+    
+    // Handle all other simple tenses for regular verbs
     const groupEndings = ENDINGS[group];
     if (!groupEndings || !groupEndings[tense]) {
         return [];
