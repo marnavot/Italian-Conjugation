@@ -1,0 +1,5 @@
+{
+  "name": "Italian Verb Conjugator",
+  "description": "An application to help users practice Italian verb conjugations across various tenses and moods. Users can select which tenses and persons to practice, and the app provides instant feedback on their answers using AI.",
+  "requestFramePermissions": []
+}
