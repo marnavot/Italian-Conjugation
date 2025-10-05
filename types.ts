@@ -26,6 +26,7 @@ export interface VerbInfo {
   infinitive: string;
   group: string;
   auxiliary: 'essere' | 'avere';
+  subgroup?: string;
   passatoRemotoStem?: string;
   participioPassato?: string;
   englishTranslation?: string;
