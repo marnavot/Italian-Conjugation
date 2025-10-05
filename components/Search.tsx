@@ -8,7 +8,7 @@ const LoadingSpinner: React.FC = () => (
     </div>
 );
 
-const singleFormTenses = ['Participio Passato', 'Participio Presente', 'Gerundio'];
+const singleFormTenses = ['Gerundio'];
 
 const Search: React.FC = () => {
     const [verb, setVerb] = useState('');
@@ -86,6 +86,44 @@ const Search: React.FC = () => {
                             const conjugationList = results.conjugations[tense];
                             if (!conjugationList || conjugationList.length === 0) {
                                 return null;
+                            }
+
+                            if (tense === 'Participio Passato') {
+                                const labels = ['Singolare maschile', 'Singolare femminile', 'Plurale maschile', 'Plurale femminile'];
+                                return (
+                                    <div key={tense} className="bg-slate-50 rounded-lg p-4 shadow-sm">
+                                        <h4 className="font-semibold text-slate-800">{tense}</h4>
+                                        {conjugationList.length === 1 ? (
+                                             <p className="text-slate-800 text-lg mt-1">{conjugationList[0]}</p>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                                                {conjugationList.map((form, index) => (
+                                                    <div key={index} className="flex items-baseline space-x-2">
+                                                        <span className="text-sm text-slate-500 w-36 text-right">{labels[index]}:</span>
+                                                        <span className="text-slate-800">{form}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }
+
+                            if (tense === 'Participio Presente') {
+                                const labels = ['Singolare', 'Plurale'];
+                                return (
+                                    <div key={tense} className="bg-slate-50 rounded-lg p-4 shadow-sm">
+                                        <h4 className="font-semibold text-slate-800">{tense}</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                                            {conjugationList.map((form, index) => (
+                                                 <div key={index} className="flex items-baseline space-x-2">
+                                                    <span className="text-sm text-slate-500 w-20 text-right">{labels[index]}:</span>
+                                                    <span className="text-slate-800">{form}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
                             }
 
                             const isSingleForm = singleFormTenses.includes(tense);

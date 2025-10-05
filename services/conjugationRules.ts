@@ -56,7 +56,7 @@ const ENDINGS: Record<string, Record<string, string[]>> = {
         'Indicativo Futuro Semplice': ['erò', 'erai', 'erà', 'eremo', 'erete', 'eranno'],
         'Congiuntivo Presente': ['i', 'i', 'i', 'iamo', 'iate', 'ino'],
         'Congiuntivo Imperfetto': ['assi', 'assi', 'asse', 'assimo', 'aste', 'assero'],
-        'Condizionale Presente': ['erei', 'eresti', 'erebbe', 'eremmo', 'ereste', 'erebbero'],
+        'Condizionale Presente': ['erei', 'eresti', 'erebbe', 'erremmo', 'ereste', 'erebbero'],
         'Imperativo': ['', 'a', 'i', 'iamo', 'ate', 'ino'],
         'Participio Passato': ['ato'],
         'Participio Presente': ['ante'],
@@ -69,7 +69,7 @@ const ENDINGS: Record<string, Record<string, string[]>> = {
         'Indicativo Futuro Semplice': ['erò', 'erai', 'erà', 'eremo', 'erete', 'eranno'],
         'Congiuntivo Presente': ['a', 'a', 'a', 'iamo', 'iate', 'ano'],
         'Congiuntivo Imperfetto': ['essi', 'essi', 'esse', 'essimo', 'este', 'essero'],
-        'Condizionale Presente': ['erei', 'eresti', 'erebbe', 'eremmo', 'ereste', 'erebbero'],
+        'Condizionale Presente': ['erei', 'eresti', 'erebbe', 'erremmo', 'ereste', 'erebbero'],
         'Imperativo': ['', 'i', 'a', 'iamo', 'ete', 'ano'],
         'Participio Passato': ['uto'],
         'Participio Presente': ['ente'],
@@ -166,6 +166,15 @@ function conjugatePronominal(verbInfo: VerbInfo, tense: string): string[] {
 
     const baseVerbInfo = { ...guessVerbInfo(baseInfinitive), auxiliary };
     
+    if (tense === 'Participio Passato') {
+        if (pronounType === 'sela' || pronounType === 'cela') {
+            const baseParticipio = getParticipioPassato(baseVerbInfo);
+            const femSing = baseParticipio.endsWith('o') ? baseParticipio.slice(0, -1) + 'a' : baseParticipio;
+            return [femSing + pronounType];
+        }
+        return conjugate(baseVerbInfo, tense);
+    }
+    
     if (tense === 'Participio Presente') {
         const ppBaseInfo = guessVerbInfo(baseInfinitive);
         return conjugate(ppBaseInfo, 'Participio Presente');
@@ -177,12 +186,6 @@ function conjugatePronominal(verbInfo: VerbInfo, tense: string): string[] {
             return [baseConjugation[0] + pronounType];
         }
         return [];
-    }
-
-    if (tense === 'Participio Passato') {
-        // Participio Passato does not attach the pronoun in its base form.
-        // It's used in compound tenses where the pronoun precedes the auxiliary.
-        return conjugate(baseVerbInfo, tense);
     }
     
     let pronouns: string[] = [];
@@ -273,8 +276,34 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
         return conjugatePronominal(verbInfo, tense);
     }
 
-    if (group === 'essere') return ESSERE[tense as keyof typeof ESSERE] || [];
-    if (group === 'avere') return AVERE[tense as keyof typeof AVERE] || [];
+    const handleParticipioPassato = (participio: string): string[] => {
+        if (participio.endsWith('o')) {
+            const stem = participio.slice(0, -1);
+            return [
+                participio, // singolare maschile
+                stem + 'a',   // singolare femminile
+                stem + 'i',   // plurale maschile
+                stem + 'e'    // plurale femminile
+            ];
+        }
+        return [participio]; // Invariable
+    };
+
+    const handleParticipioPresente = (participio: string): string[] => {
+        const plurale = participio.slice(0, -1) + 'i';
+        return [participio, plurale];
+    };
+
+    if (group === 'essere') {
+        if (tense === 'Participio Passato') return handleParticipioPassato(ESSERE['Participio Passato'][0]);
+        if (tense === 'Participio Presente') return handleParticipioPresente(ESSERE['Participio Presente'][0]);
+        return ESSERE[tense as keyof typeof ESSERE] || [];
+    }
+    if (group === 'avere') {
+        if (tense === 'Participio Passato') return handleParticipioPassato(AVERE['Participio Passato'][0]);
+        if (tense === 'Participio Presente') return handleParticipioPresente(AVERE['Participio Presente'][0]);
+        return AVERE[tense as keyof typeof AVERE] || [];
+    }
 
     const tenseInfo = TENSE_INFO[tense];
     if (!tenseInfo) return [];
@@ -288,6 +317,10 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
         return auxConjugation.map(aux => `${aux} ${participio}`);
     }
 
+    if (tense === 'Participio Passato') {
+        return handleParticipioPassato(getParticipioPassato(verbInfo));
+    }
+
     const groupEndings = ENDINGS[group];
     if (!groupEndings || !groupEndings[tense]) {
         return [];
@@ -296,7 +329,12 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
     const endings = groupEndings[tense];
     const stem = infinitive.slice(0, -3);
 
-    if (endings.length === 1) { // For Participio, Gerundio
+    if (tense === 'Participio Presente') {
+        const singolare = stem + endings[0];
+        return handleParticipioPresente(singolare);
+    }
+    
+    if (endings.length === 1) { // For Gerundio
         return [stem + endings[0]];
     }
 

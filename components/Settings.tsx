@@ -196,7 +196,8 @@ const Settings: React.FC<SettingsProps> = ({ onStart }) => {
 
     try {
       const allCustomVerbs = savedLists.flatMap(list => parseVerbsFromText(list.content));
-      const uniqueVerbs = Array.from(new Set(allCustomVerbs.map(v => v.verb.toLowerCase())));
+      // FIX: Use spread syntax for better type inference with Set. This resolves an issue where the array was incorrectly typed as 'unknown[]'.
+      const uniqueVerbs = [...new Set(allCustomVerbs.map(v => v.verb.toLowerCase()))];
       
       setSyncMessage(`Found ${uniqueVerbs.length} unique verbs. Fetching data from Gemini...`);
 
