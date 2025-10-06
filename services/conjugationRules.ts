@@ -1,4 +1,3 @@
-
 import { VerbInfo } from "../types";
 
 const AVERE = {
@@ -94,15 +93,38 @@ const ENDINGS: Record<string, Record<string, string[]>> = {
 const REFLEXIVE_PRONOUNS = ['mi', 'ti', 'si', 'ci', 'vi', 'si'];
 const DOUBLE_PRONOUNS_FIRST = ['me', 'te', 'se', 'ce', 've', 'se'];
 
-const commonEssereVerbs = new Set(['essere', 'stare', 'andare', 'venire', 'entrare', 'uscire', 'partire', 'tornare', 'nascere', 'morire', 'piacere', 'sembrare', 'diventare', 'rimanere', 'restare', 'salire', 'scendere', 'cadere', 'esistere']);
+const commonEssereVerbs = new Set(['essere', 'stare', 'andare', 'venire', 'entrare', 'uscire', 'partire', 'tornare', 'nascere', 'morire', 'piacere', 'sembrare', 'diventare', 'rimanere', 'restare', 'salire', 'scendere', 'cadere', 'esistere', 'accorrere', 'trascorrere']);
 
 const ERE_IRREGULAR_PATTERNS: Record<string, { participio_ending: string, pass_rem_stem_ending: string }> = {
+    'cidere':    { participio_ending: 'ciso', pass_rem_stem_ending: 'cis' },
+    'videre':    { participio_ending: 'viso', pass_rem_stem_ending: 'vis' },
+    'quidere':   { participio_ending: 'quiso', pass_rem_stem_ending: 'quis' },
+    'sidere':    { participio_ending: 'siso', pass_rem_stem_ending: 'sis' },
     'cendere':   { participio_ending: 'ceso', pass_rem_stem_ending: 'ces' },
     'fendere':   { participio_ending: 'feso', pass_rem_stem_ending: 'fes' },
+    'ingere':    { participio_ending: 'into', pass_rem_stem_ending: 'ins' },
+    'nguere':    { participio_ending: 'nto', pass_rem_stem_ending: 'ns' },
     'pendere':   { participio_ending: 'peso', pass_rem_stem_ending: 'pes' },
     'prendere':  { participio_ending: 'preso', pass_rem_stem_ending: 'pres' },
+    'primere':   { participio_ending: 'presso', pass_rem_stem_ending: 'press' },
     'rendere':   { participio_ending: 'reso', pass_rem_stem_ending: 'res' },
     'tendere':   { participio_ending: 'teso', pass_rem_stem_ending: 'tes' },
+    'ergere':    { participio_ending: 'erso', pass_rem_stem_ending: 'ers' },
+    'mergere':   { participio_ending: 'merso', pass_rem_stem_ending: 'mers' },
+    'ulgere':    { participio_ending: 'ulso', pass_rem_stem_ending: 'uls' },
+    'ligere':    { participio_ending: 'letto', pass_rem_stem_ending: 'less' },
+    'ruggere':   { participio_ending: 'rutto', pass_rem_stem_ending: 'russ' },
+    'uggere':    { participio_ending: 'utto', pass_rem_stem_ending: 'uss' },
+    'ludere':    { participio_ending: 'luso', pass_rem_stem_ending: 'lus' },
+    'pandere':   { participio_ending: 'panso', pass_rem_stem_ending: 'pans' },
+    'plodere':   { participio_ending: 'ploso', pass_rem_stem_ending: 'plos' },
+    'rodere':    { participio_ending: 'roso', pass_rem_stem_ending: 'ros' },
+    'trudere':   { participio_ending: 'truso', pass_rem_stem_ending: 'trus' },
+    'vadere':    { participio_ending: 'vaso', pass_rem_stem_ending: 'vas' },
+    'fondere':   { participio_ending: 'fuso', pass_rem_stem_ending: 'fus' },
+    'fliggere':  { participio_ending: 'flitto', pass_rem_stem_ending: 'fliss' },
+    'figgere':   { participio_ending: 'fitto', pass_rem_stem_ending: 'fiss' },
+    'friggere':  { participio_ending: 'fritto', pass_rem_stem_ending: 'friss' },
 };
 
 const ISC_VERBS = new Set([
@@ -114,7 +136,7 @@ const ISC_VERBS = new Set([
 
 
 export function guessVerbInfo(infinitive: string): VerbInfo {
-    const pronominalEndings: VerbInfo['pronounType'][] = ['sela', 'sene', 'cela', 'si', 'ci', 'ne', 'la'];
+    const pronominalEndings: VerbInfo['pronounType'][] = ['sela', 'sene', 'cela', 'cene', 'si', 'ci', 'ne', 'la'];
     for (const ending of pronominalEndings) {
         if (infinitive.endsWith(ending)) {
             // Reconstruct base infinitive, e.g., "alzarsi" -> "alzare", "farsi" -> "fare"
@@ -125,7 +147,7 @@ export function guessVerbInfo(infinitive: string): VerbInfo {
             
             let auxiliary = baseInfo.auxiliary;
             // Reflexive verbs always take 'essere'
-            if (['si', 'sela', 'sene'].includes(ending)) {
+            if (['si', 'sela', 'sene', 'cela', 'cene'].includes(ending)) {
                 auxiliary = 'essere';
             }
             // Handle specific case like 'esserci'
@@ -150,6 +172,88 @@ export function guessVerbInfo(infinitive: string): VerbInfo {
     // Non-pronominal verb logic
     if (infinitive === 'avere') return { infinitive, group: 'avere', auxiliary: 'avere' };
     if (infinitive === 'essere') return { infinitive, group: 'essere', auxiliary: 'essere' };
+
+    if (infinitive === 'dare') {
+        return {
+            infinitive,
+            group: 'are',
+            subgroup: 'dare',
+            auxiliary: 'avere',
+        };
+    }
+
+    if (infinitive === 'eccellere') {
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: 'avere',
+            participioPassato: 'eccelso',
+            passatoRemotoStem: 'eccels',
+        };
+    }
+    
+    if (infinitive === 'elidere') {
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: 'avere',
+            participioPassato: 'eliso',
+            passatoRemotoStem: 'elis',
+        };
+    }
+
+    if (infinitive === 'eseguire') {
+        return {
+            infinitive,
+            group: 'ire',
+            subgroup: 'eseguire',
+            auxiliary: 'avere',
+        };
+    }
+    
+    if (infinitive === 'evolvere') {
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: 'avere',
+            participioPassato: 'evoluto',
+            passatoRemotoStem: 'evols',
+        };
+    }
+
+    if (infinitive.endsWith('flettere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'flettere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'flettere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'flesso',
+            passatoRemotoStem: prefix + 'fless',
+        };
+    }
+
+    if (infinitive.endsWith('sigere')) { // for esigere, transigere
+        const prefix = infinitive.slice(0, infinitive.length - 'igere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'atto',
+        };
+    }
+
+    if (infinitive.endsWith('dire')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'dire'.length);
+        return {
+            infinitive,
+            group: 'ire',
+            subgroup: 'dire',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'detto',
+            passatoRemotoStem: prefix + 'diss',
+        };
+    }
 
     if (infinitive.endsWith('andare')) {
         return {
@@ -257,6 +361,16 @@ export function guessVerbInfo(infinitive: string): VerbInfo {
         };
     }
 
+    if (infinitive.endsWith('volvere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'volvere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'voluto',
+        };
+    }
+
     if (infinitive.endsWith('ellere')) {
         const prefix = infinitive.slice(0, infinitive.length - 'ellere'.length);
         return {
@@ -300,6 +414,175 @@ export function guessVerbInfo(infinitive: string): VerbInfo {
         };
     }
 
+    if (infinitive.endsWith('cadere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'cadere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'cadere',
+            auxiliary: 'essere',
+            passatoRemotoStem: prefix + 'cadd',
+        };
+    }
+
+    if (infinitive === 'succedere' || infinitive === 'concedere') {
+        const prefix = infinitive.slice(0, -6); // suc, con
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: infinitive === 'succedere' ? 'essere' : 'avere',
+            participioPassato: prefix + 'cesso',
+            passatoRemotoStem: prefix + 'cess',
+        };
+    }
+
+    if (infinitive.endsWith('cedere')) {
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'cedere',
+            auxiliary: 'avere',
+        };
+    }
+
+    if (infinitive.endsWith('chiedere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'chiedere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'chiesto',
+            passatoRemotoStem: prefix + 'chies',
+        };
+    }
+
+    if (infinitive.endsWith('chiudere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'chiudere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'chiuso',
+            passatoRemotoStem: prefix + 'chius',
+        };
+    }
+
+    if (infinitive.endsWith('ogliere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'ogliere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'ogliere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'olto',
+            passatoRemotoStem: prefix + 'ols',
+        };
+    }
+
+    if (infinitive.endsWith('compiere') || infinitive.endsWith('compire')) {
+        const prefix = infinitive.endsWith('compiere') 
+            ? infinitive.slice(0, -'compiere'.length) 
+            : infinitive.slice(0, -'compire'.length);
+        
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'compiere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'compiuto',
+        };
+    }
+
+    if (infinitive.endsWith('nettere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'nettere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'nettere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'nesso',
+            passatoRemotoStem: prefix + 'ness',
+        };
+    }
+
+    if (infinitive.endsWith('onoscere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'onoscere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'onosciuto',
+            passatoRemotoStem: prefix + 'onobb',
+        };
+    }
+
+    if (infinitive.endsWith('correre')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'correre'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            auxiliary: commonEssereVerbs.has(infinitive) ? 'essere' : 'avere',
+            participioPassato: prefix + 'corso',
+            passatoRemotoStem: prefix + 'cors',
+        };
+    }
+
+    if (infinitive.endsWith('cuocere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'cuocere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'cuocere',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'cotto',
+            passatoRemotoStem: prefix + 'coss',
+        };
+    }
+
+    const credereTypeVerbs = new Set(['credere', 'stridere', 'ricredere', 'scandere', 'scernere']);
+    if (credereTypeVerbs.has(infinitive)) {
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'credere',
+            auxiliary: 'avere',
+        };
+    }
+
+    if (infinitive.endsWith('durre')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'durre'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'durre',
+            auxiliary: 'avere',
+            participioPassato: prefix + 'dotto',
+            passatoRemotoStem: prefix + 'duss',
+        };
+    }
+
+    if (infinitive.endsWith('dolere')) {
+        const prefix = infinitive.slice(0, infinitive.length - 'dolere'.length);
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'dolere',
+            auxiliary: 'avere', // dolersi will be 'essere'
+            participioPassato: prefix + 'doluto',
+            passatoRemotoStem: prefix + 'dols',
+        };
+    }
+
+    if (infinitive === 'dovere') {
+        return {
+            infinitive,
+            group: 'ere',
+            subgroup: 'dovere',
+            auxiliary: 'avere',
+            participioPassato: 'dovuto',
+        };
+    }
+
     if (infinitive.endsWith('empiere')) {
         const prefix = infinitive.slice(0, infinitive.length - 'empiere'.length);
         return {
@@ -327,20 +610,17 @@ export function guessVerbInfo(infinitive: string): VerbInfo {
                 };
             }
         }
+        if (infinitive.endsWith('cire') && !infinitive.endsWith('uscire')) { // Excluding 'uscire' which is highly irregular (esco)
+            return {
+                infinitive,
+                group: 'ire',
+                subgroup: 'cire',
+                auxiliary: 'avere',
+            };
+        }
     }
 
     if (group === 'ere') {
-        if (infinitive.endsWith('figgere')) {
-            const prefix = infinitive.slice(0, infinitive.length - 'figgere'.length);
-            return {
-                infinitive,
-                group: 'ere',
-                auxiliary: 'avere',
-                participioPassato: infinitive === 'figgere' ? 'fitto' : prefix + 'fisso',
-                passatoRemotoStem: prefix + 'fiss',
-            };
-        }
-
         // Sort keys by length descending to match longer endings first (e.g., 'prendere' before 'rendere')
         const sortedPatterns = Object.keys(ERE_IRREGULAR_PATTERNS).sort((a, b) => b.length - a.length);
         
@@ -421,6 +701,7 @@ function conjugatePronominal(verbInfo: VerbInfo, tense: string): string[] {
         case 'sela': pronouns = DOUBLE_PRONOUNS_FIRST; secondPronoun = 'la'; break;
         case 'sene': pronouns = DOUBLE_PRONOUNS_FIRST; secondPronoun = 'ne'; break;
         case 'cela': pronouns = Array(6).fill('ce'); secondPronoun = 'la'; break;
+        case 'cene': pronouns = Array(6).fill('ce'); secondPronoun = 'ne'; break;
     }
 
     const baseConjugation = conjugate(baseVerbInfo, tense);
@@ -443,47 +724,98 @@ function conjugatePronominal(verbInfo: VerbInfo, tense: string): string[] {
     
     let conjugated = baseConjugation.map((form, index) => {
         if (!form) return '';
+
         const p1 = pronouns[index];
+        const p2 = secondPronoun;
         const verbPart = form;
         const verbOrAux = verbPart.split(' ')[0];
-        
-        const startsWithVowel = /^[aeiouhè]/i.test(verbOrAux);
-        const startsWithEI = /^[eiè]/i.test(verbOrAux);
+        const restOfVerb = verbPart.split(' ').slice(1).join(' ');
 
-        // Double pronoun elision
-        if (secondPronoun) {
-            if (secondPronoun === 'la' && startsWithVowel) {
-                return `${p1} l'${verbOrAux} ${verbPart.split(' ').slice(1).join(' ')}`.trim();
-            }
-            if (secondPronoun === 'ne' && startsWithEI) {
-                return `${p1} n'${verbOrAux} ${verbPart.split(' ').slice(1).join(' ')}`.trim();
-            }
-            // No elision, return full form
-            return `${p1} ${secondPronoun} ${verbPart}`;
-        }
+        const startsWithEI = /^[eièé]/i.test(verbOrAux);
+        const startsWithVowelOrH = /^[aeiouhàèéìòù]/i.test(verbOrAux);
 
-        // Single pronoun elision
-        const pronoun = p1;
-        if (['mi', 'ti', 'si', 'vi', 'la'].includes(pronoun) && startsWithVowel) {
-            return `${pronoun.slice(0, 1)}'${verbOrAux} ${verbPart.split(' ').slice(1).join(' ')}`.trim();
+        const fullForm = p2 ? `${p1} ${p2} ${verbPart}` : `${p1} ${verbPart}`;
+
+        const generateAlternativeForms = () => {
+             // Handle cases like "si è alzato/alzata" where the participle has alternatives
+            const participleAlternatives = restOfVerb.split(' / ');
+            const primaryParticiple = participleAlternatives[0];
+            
+            const longForm = `${p1} ${verbOrAux} ${restOfVerb}`;
+            
+            const shortenedForms = participleAlternatives.map(participle => {
+                return `${p1.slice(0, 1)}'${verbOrAux}${participle ? ' ' + participle : ''}`;
+            });
+            const shortForm = shortenedForms.join(' / ');
+            
+            return { longForm, shortForm };
+        };
+
+
+        switch (pronounType) {
+            case 'si': {
+                if (startsWithEI) {
+                    const { longForm, shortForm } = generateAlternativeForms();
+                    return `${longForm} / ${shortForm}`;
+                }
+                return fullForm;
+            }
+
+            case 'ci':
+            case 'ne': {
+                if (startsWithEI) {
+                    const { longForm, shortForm } = generateAlternativeForms();
+                    return `${shortForm} / ${longForm}`;
+                }
+                return fullForm;
+            }
+            
+            case 'sene':
+            case 'cene': { // p2 is 'ne'
+                 if (startsWithEI) {
+                    const { longForm, shortForm } = generateAlternativeForms();
+                    return `${shortForm} / ${longForm}`;
+                }
+                return fullForm;
+            }
+
+            case 'la': {
+                if (startsWithVowelOrH) {
+                    return `l'${verbPart}`;
+                }
+                return fullForm;
+            }
+
+            case 'sela':
+            case 'cela': { // p2 is 'la'
+                if (startsWithVowelOrH) {
+                    return `${p1} l'${verbPart}`;
+                }
+                return fullForm;
+            }
+
+            default:
+                return fullForm;
         }
-        if (pronoun === 'ci' && startsWithEI) {
-            return `c'${verbOrAux} ${verbPart.split(' ').slice(1).join(' ')}`.trim();
-        }
-        
-        // No elision, return full form
-        return `${pronoun} ${verbPart}`;
     });
     
     // Feminine participio for -sela, -cela
     if (TENSE_INFO[tense].type === 'compound' && (pronounType === 'sela' || pronounType === 'cela')) {
-        conjugated = conjugated.map(form => {
-            const parts = form.split(' ');
-            const lastPart = parts[parts.length - 1];
-            if (lastPart.endsWith('o')) {
-                return form.slice(0, -1) + 'a';
-            }
-            return form;
+        conjugated = conjugated.map(formWithPronounSlash => {
+            // Handle pronoun alternatives first
+            return formWithPronounSlash.split(' / ').map(form => {
+                const parts = form.split(' ');
+                const lastPart = parts[parts.length - 1]; // This is the participle, e.g., "lavato/lavata"
+                if (lastPart.includes('/')) {
+                    const femPart = lastPart.split('/')[1]; // "lavata"
+                    parts[parts.length - 1] = femPart;
+                    return parts.join(' ');
+                }
+                if(lastPart.endsWith('o')) {
+                    return form.slice(0, -1) + 'a';
+                }
+                return form;
+            }).join(' / ');
         });
     }
 
@@ -496,6 +828,152 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
 
     if (verbInfo.pronounType) {
         return conjugatePronominal(verbInfo, tense);
+    }
+
+    if (verbInfo.subgroup === 'eseguire') {
+        const stem = 'esegu';
+        const iscStem = 'eseguisc';
+    
+        const getCombined = (regularForm: string, iscForm: string, isRegularOnly: boolean): string => {
+            return isRegularOnly ? regularForm : `${regularForm} / ${iscForm}`;
+        };
+    
+        switch (tense) {
+            case 'Indicativo Presente': {
+                const regularForms = ENDINGS['ire']['Indicativo Presente'].map(e => stem + e);
+                const iscForms = [
+                    iscStem + 'o',
+                    iscStem + 'i',
+                    iscStem + 'e',
+                    stem + 'iamo',
+                    stem + 'ite',
+                    iscStem + 'ono'
+                ];
+                return regularForms.map((regForm, i) => getCombined(regForm, iscForms[i], i === 3 || i === 4));
+            }
+            case 'Congiuntivo Presente': {
+                const regularForms = ENDINGS['ire']['Congiuntivo Presente'].map(e => stem + e);
+                const iscForms = [
+                    iscStem + 'a',
+                    iscStem + 'a',
+                    iscStem + 'a',
+                    stem + 'iamo',
+                    stem + 'iate',
+                    iscStem + 'ano'
+                ];
+                return regularForms.map((regForm, i) => getCombined(regForm, iscForms[i], i === 3 || i === 4));
+            }
+            case 'Imperativo': {
+                const regularForms = ENDINGS['ire']['Imperativo'].map(e => stem + e);
+                const iscForms = [
+                    '',
+                    iscStem + 'i',
+                    iscStem + 'a',
+                    stem + 'iamo',
+                    stem + 'ite',
+                    iscStem + 'ano'
+                ];
+                const combined = regularForms.map((regForm, i) => getCombined(regForm, iscForms[i], i === 3 || i === 4));
+                combined[0] = ''; // io is blank
+                return combined;
+            }
+        }
+    }
+
+    if (verbInfo.subgroup === 'dire') {
+        const prefix = infinitive.slice(0, infinitive.length - 'dire'.length);
+        const stemDic = prefix + 'dic';
+        const stemDicev = prefix + 'dicev';
+
+        switch (tense) {
+            case 'Indicativo Presente':
+                return [
+                    stemDic + 'o',
+                    stemDic + 'i',
+                    stemDic + 'e',
+                    stemDic + 'iamo',
+                    prefix + 'dite',
+                    stemDic + 'ono'
+                ];
+            case 'Indicativo Imperfetto':
+                const imperfettoEndings = ['o', 'i', 'a', 'amo', 'ate', 'ano'];
+                return imperfettoEndings.map(e => stemDicev + e);
+            case 'Indicativo Passato Remoto':
+                const irregularStem = verbInfo.passatoRemotoStem;
+                if (!irregularStem) return [];
+                return [
+                    irregularStem + 'i',
+                    stemDic + 'esti',
+                    irregularStem + 'e',
+                    stemDic + 'emmo',
+                    stemDic + 'este',
+                    irregularStem + 'ero',
+                ];
+            case 'Indicativo Futuro Semplice':
+                const futStem = prefix + 'dir';
+                const futEndings = ['ò', 'ai', 'à', 'emo', 'ete', 'anno'];
+                return futEndings.map(e => futStem + e);
+            case 'Congiuntivo Presente':
+                return [
+                    stemDic + 'a',
+                    stemDic + 'a',
+                    stemDic + 'a',
+                    stemDic + 'iamo',
+                    stemDic + 'iate',
+                    stemDic + 'ano'
+                ];
+            case 'Congiuntivo Imperfetto':
+                const congImpfEndings = ['essi', 'essi', 'esse', 'essimo', 'este', 'essero'];
+                return congImpfEndings.map(e => stemDic + e);
+            case 'Condizionale Presente':
+                const condStem = prefix + 'dir';
+                const condEndings = ['ei', 'esti', 'ebbe', 'emmo', 'este', 'ebbero'];
+                return condEndings.map(e => condStem + e);
+            case 'Imperativo':
+                 const tuImperativo = infinitive === 'dire' ? prefix + "di'" : stemDic + 'i';
+                 return [
+                    '',
+                    tuImperativo,
+                    stemDic + 'a',
+                    stemDic + 'iamo',
+                    prefix + 'dite',
+                    stemDic + 'ano'
+                ];
+            case 'Gerundio':
+                return [stemDic + 'endo'];
+            case 'Participio Presente':
+                return [stemDic + 'ente'];
+        }
+    }
+
+    if (verbInfo.subgroup === 'dare') {
+        switch (tense) {
+            case 'Indicativo Presente':
+                return ['do', 'dai', 'dà', 'diamo', 'date', 'danno'];
+            case 'Indicativo Passato Remoto':
+                return [
+                    'diedi / detti',
+                    'desti',
+                    'diede / dette',
+                    'demmo',
+                    'deste',
+                    'diedero / dettero'
+                ];
+            case 'Indicativo Futuro Semplice':
+                const futStem = 'dar';
+                const futEndings = ['ò', 'ai', 'à', 'emo', 'ete', 'anno'];
+                return futEndings.map(e => futStem + e);
+            case 'Condizionale Presente':
+                const condStem = 'dar';
+                const condEndings = ['ei', 'esti', 'ebbe', 'emmo', 'este', 'ebbero'];
+                return condEndings.map(e => condStem + e);
+            case 'Congiuntivo Presente':
+                return ['dia', 'dia', 'dia', 'diamo', 'diate', 'diano'];
+            case 'Congiuntivo Imperfetto':
+                return ['dessi', 'dessi', 'desse', 'dessimo', 'deste', 'dessero'];
+            case 'Imperativo':
+                return ['', "da' / dai", 'dia', 'diamo', 'date', 'diano'];
+        }
     }
 
     if (verbInfo.subgroup === 'bere') {
@@ -558,7 +1036,256 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
         }
     }
 
-    if (verbInfo.subgroup === 'battere') {
+    if (verbInfo.subgroup === 'durre') {
+        const prefix = infinitive.slice(0, infinitive.length - 'durre'.length);
+        const stemDuc = prefix + 'duc';
+        const stemDurr = prefix + 'durr';
+
+        switch (tense) {
+            case 'Indicativo Presente':
+                return ENDINGS['ere']['Indicativo Presente'].map(e => stemDuc + e);
+            case 'Indicativo Imperfetto':
+                return ENDINGS['ere']['Indicativo Imperfetto'].map(e => stemDuc + e);
+            case 'Indicativo Passato Remoto':
+                const irregularStem = verbInfo.passatoRemotoStem;
+                if (!irregularStem) return [];
+                const regularStem = stemDuc;
+                const regularEndings = ENDINGS['ere']['Indicativo Passato Remoto'];
+                return [
+                    irregularStem + 'i',
+                    regularStem + regularEndings[1],
+                    irregularStem + 'e',
+                    regularStem + regularEndings[3],
+                    regularStem + regularEndings[4],
+                    irregularStem + 'ero',
+                ];
+            case 'Indicativo Futuro Semplice':
+                const futuroEndings = ['ò', 'ai', 'à', 'emo', 'ete', 'anno'];
+                return futuroEndings.map(e => stemDurr + e);
+            case 'Condizionale Presente':
+                const condizionaleEndings = ['ei', 'esti', 'ebbe', 'emmo', 'este', 'ebbero'];
+                return condizionaleEndings.map(e => stemDurr + e);
+            case 'Congiuntivo Presente':
+                return ENDINGS['ere']['Congiuntivo Presente'].map(e => stemDuc + e);
+            case 'Congiuntivo Imperfetto':
+                return ENDINGS['ere']['Congiuntivo Imperfetto'].map(e => stemDuc + e);
+            case 'Imperativo':
+                return ENDINGS['ere']['Imperativo'].map(e => stemDuc + e);
+            case 'Gerundio':
+                 return [stemDuc + ENDINGS['ere']['Gerundio'][0]];
+            case 'Participio Presente':
+                const participioEndings = ENDINGS['ere']['Participio Presente'];
+                if (!participioEndings || participioEndings.length === 0) return [];
+                const singolare = stemDuc + participioEndings[0];
+                return [singolare, singolare.slice(0, -1) + 'i'];
+        }
+    }
+
+    if (verbInfo.subgroup === 'dolere') {
+        const prefix = infinitive.slice(0, infinitive.length - 'dolere'.length);
+        const stemDolg = prefix + 'dolg';
+        const stemDuol = prefix + 'duol';
+        const stemDol = prefix + 'dol';
+
+        switch (tense) {
+            case 'Indicativo Presente':
+                return [
+                    stemDolg + 'o',
+                    stemDuol + 'i',
+                    stemDuol + 'e',
+                    stemDol + 'iamo',
+                    stemDol + 'ete',
+                    stemDolg + 'ono'
+                ];
+            case 'Congiuntivo Presente':
+                return [
+                    stemDolg + 'a',
+                    stemDolg + 'a',
+                    stemDolg + 'a',
+                    stemDol + 'iamo',
+                    stemDol + 'iate',
+                    stemDolg + 'ano'
+                ];
+            case 'Imperativo':
+                return [
+                    '',
+                    stemDuol + 'i',
+                    stemDolg + 'a',
+                    stemDol + 'iamo',
+                    stemDol + 'ete',
+                    stemDolg + 'ano'
+                ];
+        }
+    }
+
+    if (verbInfo.subgroup === 'dovere') {
+        const syncopatedStem = 'dovr';
+        switch (tense) {
+            case 'Indicativo Presente':
+                return [
+                    'devo / debbo',
+                    'devi',
+                    'deve',
+                    'dobbiamo',
+                    'dovete',
+                    'devono / debbono'
+                ];
+            case 'Indicativo Passato Remoto':
+                 return [
+                    'dovei / dovetti',
+                    'dovesti',
+                    'dové / dovette',
+                    'dovemmo',
+                    'doveste',
+                    'doverono / dovettero'
+                ];
+            case 'Indicativo Futuro Semplice':
+                const futuroEndings = ['ò', 'ai', 'à', 'emo', 'ete', 'anno'];
+                return futuroEndings.map(e => syncopatedStem + e);
+            case 'Condizionale Presente':
+                const condizionaleEndings = ['ei', 'esti', 'ebbe', 'emmo', 'este', 'ebbero'];
+                return condizionaleEndings.map(e => syncopatedStem + e);
+            case 'Congiuntivo Presente':
+                return [
+                    'deva / debba',
+                    'deva / debba',
+                    'deva / debba',
+                    'dobbiamo',
+                    'dobbiate',
+                    'devano / debbano'
+                ];
+            case 'Imperativo':
+                return []; // No imperative
+        }
+    }
+
+    if (verbInfo.subgroup === 'cuocere') {
+        const prefix = infinitive.slice(0, infinitive.length - 'cuocere'.length);
+        const stem = prefix + 'cuoc';
+        switch (tense) {
+            case 'Indicativo Presente':
+                return [
+                    stem + 'io',   // cuocio
+                    stem + 'i',    // cuoci
+                    stem + 'e',    // cuoce
+                    stem + 'iamo', // cuociamo
+                    stem + 'ete',  // cuocete
+                    stem + 'iono', // cuociono
+                ];
+            case 'Congiuntivo Presente':
+                return [
+                    stem + 'ia',
+                    stem + 'ia',
+                    stem + 'ia',
+                    stem + 'iamo',
+                    stem + 'iate',
+                    stem + 'iano',
+                ];
+            case 'Imperativo':
+                 return [
+                    '',
+                    stem + 'i',      // tu
+                    stem + 'ia',     // Lei
+                    stem + 'iamo',   // noi
+                    stem + 'ete',    // voi
+                    stem + 'iano',   // Loro
+                ];
+        }
+    }
+
+    if (verbInfo.subgroup === 'ogliere') {
+        const stem = infinitive.slice(0, -7); // cogliere -> c
+        const regularStem = stem + 'ogli'; // c + ogli -> cogli
+        const irregularStem = stem + 'olg'; // c + olg -> colg
+        switch (tense) {
+            case 'Indicativo Presente':
+                return [
+                    irregularStem + 'o',     // colgo
+                    regularStem,           // cogli
+                    regularStem + 'e',       // coglie
+                    regularStem + 'amo',     // cogliamo
+                    regularStem + 'ete',     // cogliete
+                    irregularStem + 'ono',   // colgono
+                ];
+            case 'Congiuntivo Presente':
+                return [
+                    irregularStem + 'a',
+                    irregularStem + 'a',
+                    irregularStem + 'a',
+                    regularStem + 'amo',
+                    regularStem + 'ate',
+                    irregularStem + 'ano',
+                ];
+            case 'Imperativo':
+                return [
+                    '',
+                    regularStem,
+                    irregularStem + 'a',
+                    regularStem + 'amo',
+                    regularStem + 'ete',
+                    irregularStem + 'ano',
+                ];
+        }
+    }
+
+    if (verbInfo.subgroup === 'cire') {
+        const stem = infinitive.slice(0, -3); // cucire -> cuc
+        
+        if (tense === 'Indicativo Presente') {
+            return [
+                stem + 'io',
+                stem + 'i',
+                stem + 'e',
+                stem + 'iamo',
+                stem + 'ite',
+                stem + 'iono',
+            ];
+        }
+        if (tense === 'Congiuntivo Presente') {
+            return [
+                stem + 'ia',
+                stem + 'ia',
+                stem + 'ia',
+                stem + 'iamo',
+                stem + 'iate',
+                stem + 'iano',
+            ];
+        }
+    }
+
+    if (verbInfo.subgroup === 'compiere') {
+        const prefix = verbInfo.infinitive.endsWith('compiere') 
+            ? verbInfo.infinitive.slice(0, -'compiere'.length) 
+            : verbInfo.infinitive.slice(0, -'compire'.length);
+        
+        const stem = prefix + 'comp';
+        const iStem = prefix + 'compi';
+
+        switch (tense) {
+            case 'Indicativo Presente':
+                return [iStem + 'o', iStem, iStem + 'e', stem + 'iamo', stem + 'ite', iStem + 'ono'];
+            case 'Indicativo Imperfetto':
+                return ENDINGS['ire']['Indicativo Imperfetto'].map(e => stem + e);
+            case 'Indicativo Passato Remoto':
+                return ENDINGS['ire']['Indicativo Passato Remoto'].map(e => stem + e);
+            case 'Indicativo Futuro Semplice':
+                return ENDINGS['ire']['Indicativo Futuro Semplice'].map(e => stem + e);
+            case 'Congiuntivo Presente':
+                return [iStem + 'a', iStem + 'a', iStem + 'a', stem + 'iamo', stem + 'iate', iStem + 'ano'];
+            case 'Congiuntivo Imperfetto':
+                return ENDINGS['ire']['Congiuntivo Imperfetto'].map(e => stem + e);
+            case 'Condizionale Presente':
+                return ENDINGS['ire']['Condizionale Presente'].map(e => stem + e);
+            case 'Imperativo':
+                return ['', iStem, iStem + 'a', stem + 'iamo', stem + 'ite', iStem + 'ano'];
+            case 'Gerundio':
+                return [stem + 'endo'];
+            case 'Participio Presente':
+                return [stem + 'iente', stem + 'ienti'];
+        }
+    }
+
+    if (verbInfo.subgroup === 'battere' || verbInfo.subgroup === 'cedere' || verbInfo.subgroup === 'credere') {
         if (tense === 'Indicativo Passato Remoto') {
             const stem = infinitive.slice(0, -3);
             const regularEndings = ENDINGS['ere']['Indicativo Passato Remoto'];
@@ -574,6 +1301,18 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
                 regularForms[4],
                 `${regularForms[5]} / ${irregularStem}ero`,
             ];
+        }
+    }
+
+    if (verbInfo.subgroup === 'cadere') {
+        const syncopatedStem = infinitive.slice(0, -3) + 'r';
+        if (tense === 'Indicativo Futuro Semplice') {
+            const futuroEndings = ['ò', 'ai', 'à', 'emo', 'ete', 'anno'];
+            return futuroEndings.map(e => syncopatedStem + e);
+        }
+        if (tense === 'Condizionale Presente') {
+            const condizionaleEndings = ['ei', 'esti', 'ebbe', 'emmo', 'este', 'ebbero'];
+            return condizionaleEndings.map(e => syncopatedStem + e);
         }
     }
 
@@ -902,6 +1641,26 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
         if (tense === 'Participio Presente') return handleParticipioPresente(AVERE['Participio Presente'][0]);
         return AVERE[tense as keyof typeof AVERE] || [];
     }
+    
+    // Handle Passato Remoto with regular and irregular forms
+    if (tense === 'Indicativo Passato Remoto' && (verbInfo.subgroup === 'flettere' || verbInfo.subgroup === 'nettere')) {
+        const irregularStem = verbInfo.passatoRemotoStem;
+        if (!irregularStem) return [];
+
+        const regularStem = verbInfo.infinitive.slice(0, -3);
+        const regularEndings = ENDINGS['ere']['Indicativo Passato Remoto'];
+        if (!regularEndings) return [];
+        const regularForms = regularEndings.map(e => regularStem + e);
+
+        return [
+            `${irregularStem}i / ${regularForms[0]}`,
+            regularForms[1],
+            `${irregularStem}e / ${regularForms[2]}`,
+            regularForms[3],
+            regularForms[4],
+            `${irregularStem}ero / ${regularForms[5]}`,
+        ];
+    }
 
     // Handle irregular Passato Remoto
     if (tense === 'Indicativo Passato Remoto' && verbInfo.passatoRemotoStem) {
@@ -985,23 +1744,27 @@ export function conjugate(verbInfo: VerbInfo, tense: string): string[] {
         return [stem + endings[0]];
     }
 
-    const conjugation = endings.map(ending => stem + ending);
-
-    // Special case for -care, -gare verbs to maintain hard C/G sound
-    if ((infinitive.endsWith('care') || infinitive.endsWith('gare'))) {
-        if (['Indicativo Futuro Semplice', 'Condizionale Presente'].includes(tense)) {
-             return conjugation.map(c => c.replace(/er/,'her'));
-        }
-        if (['Indicativo Presente', 'Congiuntivo Presente', 'Imperativo'].includes(tense)) {
-            return conjugation.map((c, index) => {
-                 // tu, noi for -care/-gare
-                if (index === 1 || index === 3) return stem + 'h' + endings[index];
-                 // Loro for -care/-gare in Congiuntivo/Imperativo
-                if (tense !== 'Indicativo Presente' && index === 5) return stem + 'h' + endings[index];
-                return c;
-            });
-        }
+    // Special case for -ciare, -giare verbs to drop the stem 'i' before 'e' or 'i' endings.
+    if (infinitive.endsWith('ciare') || infinitive.endsWith('giare')) {
+        const baseStem = infinitive.slice(0, -3); // e.g., cominci-, mangi-
+        return endings.map(ending => {
+            if (ending && (ending.startsWith('e') || ending.startsWith('i'))) {
+                const modifiedStem = baseStem.slice(0, -1); // e.g., cominc-, mang-
+                return modifiedStem + ending;
+            }
+            return baseStem + ending;
+        });
     }
 
-    return conjugation;
+    // Special case for -care, -gare verbs to maintain hard C/G sound
+    if (infinitive.endsWith('care') || infinitive.endsWith('gare')) {
+        return endings.map(ending => {
+            if (ending && (ending.startsWith('e') || ending.startsWith('i'))) {
+                return stem + 'h' + ending;
+            }
+            return stem + ending;
+        });
+    }
+    
+    return endings.map(ending => stem + ending);
 }

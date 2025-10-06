@@ -10,6 +10,23 @@ const LoadingSpinner: React.FC = () => (
 
 const singleFormTenses = ['Gerundio'];
 
+// Helper to decide which form to display in the search results
+const getDisplayForm = (conjugation: string): string => {
+    if (!conjugation.includes(' / ')) {
+        return conjugation;
+    }
+    const parts = conjugation.split(' / ');
+    const hasContraction = parts.some(p => p.includes("'"));
+
+    if (hasContraction) {
+        // Prefer the contracted form (with apostrophe) if it exists
+        return parts.find(p => p.includes("'")) || parts[0];
+    }
+
+    // It's a true dual form (e.g., eseguire), so show both
+    return conjugation;
+};
+
 const Search: React.FC = () => {
     const [verb, setVerb] = useState('');
     const [results, setResults] = useState<FullConjugationResult | null>(null);
@@ -131,7 +148,7 @@ const Search: React.FC = () => {
                             return isSingleForm ? (
                                 <div key={tense} className="bg-slate-50 rounded-lg p-4 shadow-sm">
                                     <h4 className="font-semibold text-slate-800">{tense}</h4>
-                                    <p className="text-slate-800 text-lg mt-1">{conjugationList[0]}</p>
+                                    <p className="text-slate-800 text-lg mt-1">{getDisplayForm(conjugationList[0])}</p>
                                 </div>
                             ) : (
                                 <details key={tense} className="bg-slate-50 rounded-lg open:shadow-md transition-shadow group">
@@ -146,10 +163,11 @@ const Search: React.FC = () => {
                                                     if (tense === 'Imperativo' && person === 'io') {
                                                         return null;
                                                     }
+                                                    const conjugation = conjugationList[index] || '';
                                                     return (
                                                         <tr key={person} className="border-b border-slate-200 last:border-b-0">
                                                             <td className="py-2 pr-4 font-medium text-slate-600 w-1/4">{person}</td>
-                                                            <td className="py-2 text-slate-800">{conjugationList[index]}</td>
+                                                            <td className="py-2 text-slate-800">{getDisplayForm(conjugation)}</td>
                                                         </tr>
                                                     );
                                                 })}

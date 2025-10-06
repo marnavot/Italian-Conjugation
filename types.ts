@@ -30,6 +30,6 @@ export interface VerbInfo {
   passatoRemotoStem?: string;
   participioPassato?: string;
   englishTranslation?: string;
-  pronounType?: 'si' | 'ci' | 'ne' | 'la' | 'sela' | 'sene' | 'cela';
+  pronounType?: 'si' | 'ci' | 'ne' | 'la' | 'sela' | 'sene' | 'cela' | 'cene';
   baseInfinitive?: string;
 }
