@@ -1,7 +1,8 @@
 import type { VerbInfo } from '../types';
-import { getVerb } from './verbDb';
+import { getVerb, saveVerb } from './verbDb';
 import { conjugate, guessVerbInfo } from './conjugationRules';
 import { ALL_TENSES } from '../constants';
+import { getVerbInfoBatch } from './geminiService';
 
 export type ConjugationResult = Record<string, string[]>;
 
@@ -40,4 +41,25 @@ export async function getFullConjugation(infinitive: string): Promise<FullConjug
     }
     
     return { info: verbInfo, conjugations: allConjugations };
+}
+
+export async function syncAuxiliaryVerbs(verbList: string[]): Promise<void> {
+    if (verbList.length === 0) return;
+
+    // Get the latest info from the AI
+    const verbInfosFromGemini = await getVerbInfoBatch(verbList);
+
+    for (const geminiInfo of verbInfosFromGemini) {
+        if (!geminiInfo.infinitive || !geminiInfo.auxiliary) continue;
+
+        // Get the existing data from the DB, or guess it if it's not present.
+        // This preserves all the detailed, hand-coded rules from conjugationRules.ts
+        const existingInfo = await getVerb(geminiInfo.infinitive) ?? guessVerbInfo(geminiInfo.infinitive);
+        
+        // CRITICAL: Only update the auxiliary verb property, leaving everything else intact.
+        existingInfo.auxiliary = geminiInfo.auxiliary;
+
+        // Save the updated record back to the DB.
+        await saveVerb(existingInfo);
+    }
 }

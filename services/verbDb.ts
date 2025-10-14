@@ -1,81 +1,105 @@
-
 import type { VerbInfo } from '../types';
 
-const DB_NAME = 'ItalianVerbDB';
+const DB_NAME = 'VerbDatabase';
 const DB_VERSION = 1;
 const STORE_NAME = 'verbs';
 
-let dbPromise: Promise<IDBDatabase> | null = null;
+let db: IDBDatabase | null = null;
 
 function openDb(): Promise<IDBDatabase> {
-  if (dbPromise) {
-    return dbPromise;
-  }
-  dbPromise = new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
+    if (db) {
+      resolve(db);
+      return;
+    }
+
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => {
-      console.error('IndexedDB error:', request.error);
-      reject('Error opening IndexedDB.');
-      dbPromise = null; 
+      console.error("Error opening IndexedDB:", request.error);
+      reject(request.error);
     };
 
     request.onsuccess = () => {
-      resolve(request.result);
+      db = request.result;
+      resolve(db);
     };
 
     request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'infinitive' });
+      const tempDb = (event.target as IDBOpenDBRequest).result;
+      if (!tempDb.objectStoreNames.contains(STORE_NAME)) {
+        tempDb.createObjectStore(STORE_NAME, { keyPath: 'infinitive' });
       }
     };
   });
-  return dbPromise;
 }
 
-export async function getVerb(infinitive: string): Promise<VerbInfo | undefined> {
-  const db = await openDb();
+export async function getVerb(infinitive: string): Promise<VerbInfo | null> {
+  const dbConnection = await openDb();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(infinitive.toLowerCase());
+    try {
+      const transaction = dbConnection.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(infinitive);
 
-    request.onerror = () => reject('Error fetching verb from DB.');
-    request.onsuccess = () => resolve(request.result as VerbInfo | undefined);
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+
+      request.onerror = () => {
+        console.error(`Error fetching verb "${infinitive}":`, request.error);
+        reject(request.error);
+      };
+    } catch (error) {
+        console.error(`Error creating transaction for verb "${infinitive}":`, error);
+        reject(error);
+    }
   });
 }
 
 export async function saveVerb(verbInfo: VerbInfo): Promise<void> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put({ ...verbInfo, infinitive: verbInfo.infinitive.toLowerCase() });
+    const dbConnection = await openDb();
+    return new Promise((resolve, reject) => {
+        try {
+            const transaction = dbConnection.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.put(verbInfo);
 
-    request.onerror = () => reject('Error saving verb to DB.');
-    request.onsuccess = () => resolve();
-  });
+            request.onsuccess = () => {
+                resolve();
+            };
+
+            request.onerror = () => {
+                console.error(`Error saving verb "${verbInfo.infinitive}":`, request.error);
+                reject(request.error);
+            };
+        } catch (error) {
+            console.error(`Error creating transaction for saving verb "${verbInfo.infinitive}":`, error);
+            reject(error);
+        }
+    });
 }
 
-export async function bulkSaveVerbs(verbInfos: VerbInfo[]): Promise<void> {
-  if (verbInfos.length === 0) return;
-  const db = await openDb();
+export async function clearAllVerbs(): Promise<void> {
+  const dbConnection = await openDb();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
+    try {
+      const transaction = dbConnection.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.clear();
 
-    transaction.onerror = (event) => {
-        console.error('Transaction error during bulk save', event);
-        reject('Transaction failed during bulk save.');
-    };
-    
-    transaction.oncomplete = () => {
+      request.onsuccess = () => {
+        console.log("Verb store cleared successfully.");
         resolve();
-    };
+      };
 
-    verbInfos.forEach(verbInfo => {
-      store.put(verbInfo);
-    });
+      request.onerror = () => {
+        console.error('Error clearing verb store:', request.error);
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('Error creating transaction for clearing verbs:', error);
+      reject(error);
+    }
   });
 }

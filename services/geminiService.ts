@@ -83,7 +83,8 @@ export async function getNewProblem(tenses: string[], usedVerbs: string[], diffi
 
 
 export async function getVerbInfoBatch(verbs: string[]): Promise<VerbInfo[]> {
-  const prompt = `For the following list of Italian verbs, provide their conjugation metadata. For each verb, specify its primary conjugation group (e.g., "are", "ere", "ire", "essere", "avere", or a specific irregular pattern like "-porre"), its auxiliary verb ("essere" or "avere") for compound tenses, and its English translation. Verbs: ${verbs.join(', ')}`;
+  // FIX: Updated prompt to allow Gemini to return 'essere / avere' for verbs that use both auxiliaries.
+  const prompt = `For the following list of Italian verbs, provide their conjugation metadata. For each verb, specify its primary conjugation group (e.g., "are", "ere", "ire", "essere", "avere", or a specific irregular pattern like "-porre"), its auxiliary verb for compound tenses (this can be "essere", "avere", or both, like "essere / avere"), and its English translation. Verbs: ${verbs.join(', ')}`;
   
   try {
     const response = await ai.models.generateContent({
@@ -99,7 +100,8 @@ export async function getVerbInfoBatch(verbs: string[]): Promise<VerbInfo[]> {
             properties: {
               infinitive: { type: Type.STRING, description: "The verb in its infinitive form." },
               group: { type: Type.STRING, description: "The conjugation group of the verb." },
-              auxiliary: { type: Type.STRING, description: "The auxiliary verb, either 'essere' or 'avere'." },
+              // FIX: Updated schema description to reflect that 'essere / avere' is a valid value.
+              auxiliary: { type: Type.STRING, description: "The auxiliary verb. Can be 'essere', 'avere', or 'essere / avere' for verbs that use both." },
               englishTranslation: { type: Type.STRING, description: "The English translation of the verb." }
             },
             required: ['infinitive', 'group', 'auxiliary']

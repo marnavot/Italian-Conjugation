@@ -1,8 +1,9 @@
-
 export const ALL_TENSES = [
   'Indicativo Presente',
+  'Indicativo Presente Progressivo',
   'Indicativo Passato Prossimo',
   'Indicativo Imperfetto',
+  'Indicativo Passato Progressivo',
   'Indicativo Trapassato Prossimo',
   'Indicativo Passato Remoto',
   'Indicativo Futuro Semplice',

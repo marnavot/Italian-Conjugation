@@ -1,349 +1,403 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
-import type { PracticeSettings, CustomVerb, VerbInfo } from '../types';
+import type { PracticeSettings, CustomVerb } from '../types';
 import { ALL_TENSES, ALL_PERSONS } from '../constants';
-import { getVerbInfoBatch } from '../services/geminiService';
-import { bulkSaveVerbs } from '../services/verbDb';
+import { useSavedLists } from '../hooks/useSavedLists';
+import { parseVerbsFromText } from '../services/verbParser';
+import { syncAuxiliaryVerbs } from '../services/conjugationService';
+import { clearAllVerbs } from '../services/verbDb';
+
 
 interface SettingsProps {
   onStart: (settings: PracticeSettings) => void;
 }
 
-interface SavedList {
-  name: string;
-  content: string;
-}
+const TENSE_GROUPS: Record<string, string[]> = {
+    'Indicativo': ALL_TENSES.filter(t => t.startsWith('Indicativo')),
+    'Condizionale': ALL_TENSES.filter(t => t.startsWith('Condizionale')),
+    'Congiuntivo': ALL_TENSES.filter(t => t.startsWith('Congiuntivo')),
+    'Other': ALL_TENSES.filter(t => !t.startsWith('Indicativo') && !t.startsWith('Condizionale') && !t.startsWith('Congiuntivo')),
+};
 
-type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
-const STORAGE_KEY = 'italianVerbCustomLists';
+const ListManager: React.FC = () => {
+    const { savedLists, saveList, deleteList } = useSavedLists();
+    const [selectedListToEdit, setSelectedListToEdit] = useState('');
+    const [listName, setListName] = useState('');
+    const [listContent, setListContent] = useState('');
+    const [feedback, setFeedback] = useState('');
 
-const Checkbox: React.FC<{ label: string; checked: boolean; onChange: () => void; }> = ({ label, checked, onChange }) => (
-  <label className="flex items-center space-x-3 cursor-pointer p-2 rounded-md hover:bg-sky-50 transition-colors">
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      className="h-5 w-5 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-    />
-    <span className="text-slate-700">{label}</span>
-  </label>
-);
+    useEffect(() => {
+        if (selectedListToEdit) {
+            const list = savedLists.find(l => l.name === selectedListToEdit);
+            if (list) {
+                setListName(list.name);
+                setListContent(list.content);
+            }
+        } else {
+            setListName('');
+            setListContent('');
+        }
+    }, [selectedListToEdit, savedLists]);
 
-const parseVerbsFromText = (text: string): CustomVerb[] => {
-  if (!text.trim()) {
-    return [];
-  }
-  const lines = text.split('\n');
-  return lines
-    .map(line => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) return null;
+    const handleSave = () => {
+        if (!listName.trim()) {
+            setFeedback('List name is required.');
+            return;
+        }
+        const result = saveList(listName, listContent, selectedListToEdit === listName);
+        if (result.success) {
+            setFeedback(`List "${listName}" saved successfully.`);
+            if (!selectedListToEdit) { // if it was a new list
+                setSelectedListToEdit(listName);
+            }
+        } else if (result.needsOverwrite) {
+            if (window.confirm(`A list named "${listName}" already exists. Do you want to overwrite it?`)) {
+                saveList(listName, listContent, true);
+                setFeedback(`List "${listName}" overwritten.`);
+            }
+        }
+        setTimeout(() => setFeedback(''), 3000);
+    };
 
-      const tabParts = trimmedLine.split('\t');
-      if (tabParts.length >= 2 && tabParts[0].trim() && tabParts[1].trim()) {
-        return { englishTranslation: tabParts[0].trim(), verb: tabParts[1].trim() };
-      }
+    const handleDelete = () => {
+        if (!selectedListToEdit) return;
+        if (window.confirm(`Are you sure you want to delete the list "${selectedListToEdit}"?`)) {
+            deleteList(selectedListToEdit);
+            setFeedback(`List "${selectedListToEdit}" deleted.`);
+            setSelectedListToEdit('');
+            setTimeout(() => setFeedback(''), 3000);
+        }
+    };
+    
+    const handleNewList = () => {
+        setSelectedListToEdit('');
+        setListName('');
+        setListContent('');
+    };
 
-      const lastCommaIndex = trimmedLine.lastIndexOf(',');
-      if (lastCommaIndex > 0 && lastCommaIndex < trimmedLine.length - 1) {
-          const englishPart = trimmedLine.substring(0, lastCommaIndex).trim();
-          const verbPart = trimmedLine.substring(lastCommaIndex + 1).trim();
-          if (englishPart && verbPart) {
-              return { englishTranslation: englishPart, verb: verbPart };
-          }
-      }
-      
-      const simpleParts = trimmedLine.split(/,/).map(p => p.trim());
-      if (simpleParts.length === 2 && simpleParts[0] && simpleParts[1]) {
-          return { englishTranslation: simpleParts[0], verb: simpleParts[1] };
-      }
+    return (
+        <details className="p-4 border rounded-lg bg-slate-50 group">
+            <summary className="font-semibold text-slate-800 cursor-pointer list-none flex justify-between items-center">
+                Manage Custom Verb Lists
+                <span className="text-sky-500 text-xl transform transition-transform duration-200 group-open:rotate-180 details-arrow">&#9662;</span>
+            </summary>
+            <div className="mt-4 pt-4 border-t space-y-4">
+                <div className="flex gap-2 items-center">
+                    <select
+                        value={selectedListToEdit}
+                        onChange={(e) => setSelectedListToEdit(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm"
+                    >
+                        <option value="">-- Select a list to edit --</option>
+                        {savedLists.map(list => <option key={list.name} value={list.name}>{list.name}</option>)}
+                    </select>
+                    <button onClick={handleNewList} className="px-4 py-2 bg-slate-200 text-slate-800 text-sm font-bold rounded-lg hover:bg-slate-300 whitespace-nowrap">
+                        + New List
+                    </button>
+                </div>
+                <input
+                    type="text"
+                    placeholder="List Name"
+                    value={listName}
+                    onChange={(e) => setListName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm"
+                />
+                <textarea
+                    placeholder="to arrive, arrivare&#10;to have, avere"
+                    value={listContent}
+                    onChange={(e) => setListContent(e.target.value)}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm font-mono"
+                />
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-green-600">{feedback}</span>
+                    <div className="flex gap-2">
+                        {selectedListToEdit && (
+                             <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700">Delete</button>
+                        )}
+                        <button onClick={handleSave} className="px-4 py-2 bg-sky-600 text-white text-sm font-bold rounded-lg hover:bg-sky-700">{selectedListToEdit ? 'Save Changes' : 'Save New List'}</button>
+                    </div>
+                </div>
+            </div>
+        </details>
+    );
+};
 
-      return null;
-    })
-    .filter((v): v is CustomVerb => v !== null);
+const OfflineDataManager: React.FC = () => {
+    const { savedLists } = useSavedLists();
+    const [selectedListToSync, setSelectedListToSync] = useState('');
+    const [syncStatus, setSyncStatus] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleSync = async () => {
+        if (!selectedListToSync) return;
+        const list = savedLists.find(l => l.name === selectedListToSync);
+        if (!list) return;
+
+        const verbs = parseVerbsFromText(list.content).map(v => v.verb);
+        if (verbs.length === 0) {
+            setSyncStatus('Error: No valid verbs found in the list.');
+            setTimeout(() => setSyncStatus(''), 4000);
+            return;
+        }
+
+        setIsSyncing(true);
+        setSyncStatus(`Syncing ${verbs.length} verbs...`);
+        try {
+            await syncAuxiliaryVerbs(verbs);
+            setSyncStatus(`Successfully synced auxiliary verbs for "${selectedListToSync}".`);
+        } catch (error) {
+            console.error(error);
+            setSyncStatus('Error: Sync failed. Please check the console.');
+        } finally {
+            setIsSyncing(false);
+            setTimeout(() => setSyncStatus(''), 4000);
+        }
+    };
+    
+    const handleClearData = async () => {
+        if (window.confirm('Are you sure you want to clear all synced verb data? This will reset all verbs to their default conjugation rules.')) {
+            try {
+                await clearAllVerbs();
+                setSyncStatus('All synced data has been cleared.');
+            } catch (error) {
+                console.error(error);
+                setSyncStatus('Error: Could not clear data.');
+            } finally {
+                setTimeout(() => setSyncStatus(''), 4000);
+            }
+        }
+    };
+
+    return (
+        <details className="p-4 border rounded-lg bg-slate-50 group">
+            <summary className="font-semibold text-slate-800 cursor-pointer list-none flex justify-between items-center">
+                Offline Data Management
+                <span className="text-sky-500 text-xl transform transition-transform duration-200 group-open:rotate-180 details-arrow">&#9662;</span>
+            </summary>
+            <div className="mt-4 pt-4 border-t space-y-4">
+                <div>
+                    <h4 className="font-medium text-slate-700 mb-2">Sync Auxiliary Verbs</h4>
+                    <p className="text-xs text-slate-500 mb-2">Fix incorrect auxiliary verbs (essere/avere) for a list by syncing with the AI, without changing irregular conjugation rules.</p>
+                    <div className="flex items-center gap-2">
+                         <select
+                            value={selectedListToSync}
+                            onChange={(e) => setSelectedListToSync(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm"
+                            disabled={isSyncing}
+                        >
+                            <option value="">Select a list to sync...</option>
+                            {savedLists.map(list => <option key={list.name} value={list.name}>{list.name}</option>)}
+                        </select>
+                        <button onClick={handleSync} disabled={!selectedListToSync || isSyncing} className="px-4 py-2 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 disabled:bg-slate-400 whitespace-nowrap">
+                            {isSyncing ? 'Syncing...' : 'Sync Auxiliaries'}
+                        </button>
+                    </div>
+                </div>
+                 <div>
+                    <h4 className="font-medium text-slate-700 mb-2">Database Reset</h4>
+                     <button onClick={handleClearData} className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow-sm hover:bg-red-700">
+                        Clear All Synced Data
+                    </button>
+                </div>
+                {syncStatus && <p className="text-sm text-slate-600 text-center">{syncStatus}</p>}
+            </div>
+        </details>
+    );
 };
 
 
 const Settings: React.FC<SettingsProps> = ({ onStart }) => {
-  const [selectedTenses, setSelectedTenses] = useState<Set<string>>(new Set(['Indicativo Presente']));
-  const [selectedPersons, setSelectedPersons] = useState<Set<string>>(new Set(ALL_PERSONS));
+  const [selectedTenses, setSelectedTenses] = useState<string[]>(['Indicativo Presente']);
+  const [selectedPersons, setSelectedPersons] = useState<string[]>(ALL_PERSONS);
   const [difficulty, setDifficulty] = useState('Beginner');
+  const [useCustomVerbs, setUseCustomVerbs] = useState(false);
+  const [selectedList, setSelectedList] = useState('');
   const [customVerbs, setCustomVerbs] = useState<CustomVerb[]>([]);
-  const [textAreaContent, setTextAreaContent] = useState('');
-  const [savedLists, setSavedLists] = useState<SavedList[]>([]);
-  const [selectedList, setSelectedList] = useState<string>('');
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
-  const [syncMessage, setSyncMessage] = useState('');
+  const [error, setError] = useState('');
 
-  const hasCustomVerbs = customVerbs.length > 0;
-
-  useEffect(() => {
-    try {
-      const storedLists = localStorage.getItem(STORAGE_KEY);
-      if (storedLists) {
-        setSavedLists(JSON.parse(storedLists));
-      }
-    } catch (error) {
-      console.error("Failed to load custom lists from local storage:", error);
-    }
-  }, []);
+  const { savedLists } = useSavedLists();
   
   useEffect(() => {
-    const verbs = parseVerbsFromText(textAreaContent);
-    setCustomVerbs(verbs);
-  }, [textAreaContent]);
-  
-  const handleTextareaChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setTextAreaContent(event.target.value);
-  }, []);
-
-  const clearCustomVerbs = useCallback(() => {
-    setTextAreaContent('');
-  }, []);
-  
-  const handleSaveList = useCallback(() => {
-    const listName = window.prompt("Enter a name for this verb list:");
-    if (!listName || !listName.trim()) return;
-
-    if (savedLists.some(list => list.name === listName)) {
-      if (!window.confirm(`A list named "${listName}" already exists. Do you want to overwrite it?`)) {
-        return;
-      }
-    }
-
-    const updatedLists = savedLists.filter(list => list.name !== listName);
-    const newList = { name: listName, content: textAreaContent };
-    const newSavedLists = [...updatedLists, newList].sort((a, b) => a.name.localeCompare(b.name));
-
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSavedLists));
-      setSavedLists(newSavedLists);
-      setSelectedList(listName);
-      alert(`List "${listName}" saved successfully!`);
-    } catch (error) {
-      console.error("Failed to save list to local storage:", error);
-      alert("Error: Could not save the list.");
-    }
-  }, [textAreaContent, savedLists]);
-
-  const handleListSelection = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-    const listName = event.target.value;
-    setSelectedList(listName);
-    if (listName) {
-      const list = savedLists.find(l => l.name === listName);
+    if (useCustomVerbs && selectedList) {
+      const list = savedLists.find(l => l.name === selectedList);
       if (list) {
-        setTextAreaContent(list.content);
+        const parsedVerbs = parseVerbsFromText(list.content);
+        setCustomVerbs(parsedVerbs);
+        if(parsedVerbs.length === 0) {
+          setError('Selected list has no valid verbs.');
+        } else {
+          setError('');
+        }
       }
     } else {
-      setTextAreaContent('');
+      setCustomVerbs([]);
     }
-  }, [savedLists]);
+  }, [useCustomVerbs, selectedList, savedLists]);
 
-  const handleDeleteList = useCallback(() => {
-    if (!selectedList || !window.confirm(`Are you sure you want to delete the list "${selectedList}"?`)) {
+  const handleTenseChange = useCallback((tense: string) => {
+    setSelectedTenses(prev =>
+      prev.includes(tense)
+        ? prev.filter(t => t !== tense)
+        : [...prev, tense]
+    );
+  }, []);
+
+  const handlePersonChange = useCallback((person: string) => {
+    setSelectedPersons(prev =>
+      prev.includes(person)
+        ? prev.filter(p => p !== person)
+        : [...prev, person]
+    );
+  }, []);
+
+  const handleSelectAllTenses = useCallback((group: string[]) => {
+      setSelectedTenses(prev => {
+          const newTenses = new Set([...prev, ...group]);
+          return Array.from(newTenses);
+      });
+  }, []);
+
+  const handleDeselectAllTenses = useCallback((group: string[]) => {
+      setSelectedTenses(prev => prev.filter(t => !group.includes(t)));
+  }, []);
+
+  const handleStartPractice = useCallback(() => {
+    setError('');
+    if (selectedTenses.length === 0) {
+      setError('Please select at least one tense.');
+      return;
+    }
+    if (selectedPersons.length === 0) {
+      setError('Please select at least one person.');
+      return;
+    }
+    if (useCustomVerbs && customVerbs.length === 0) {
+      setError('Please select a custom list with valid verbs, or disable the custom verb option.');
       return;
     }
 
-    const newSavedLists = savedLists.filter(list => list.name !== selectedList);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSavedLists));
-      setSavedLists(newSavedLists);
-      setSelectedList('');
-      setTextAreaContent('');
-      alert(`List "${selectedList}" deleted.`);
-    } catch (error) {
-      console.error("Failed to delete list from local storage:", error);
-      alert("Error: Could not delete the list.");
-    }
-  }, [selectedList, savedLists]);
-
-  const toggleTense = useCallback((tense: string) => {
-    setSelectedTenses(prev => {
-      const newSet = new Set(prev);
-      newSet.has(tense) ? newSet.delete(tense) : newSet.add(tense);
-      return newSet;
-    });
-  }, []);
-
-  const togglePerson = useCallback((person: string) => {
-    setSelectedPersons(prev => {
-      const newSet = new Set(prev);
-      newSet.has(person) ? newSet.delete(person) : newSet.add(person);
-      return newSet;
-    });
-  }, []);
-  
-  const handleStart = () => {
     onStart({
-      tenses: Array.from(selectedTenses),
-      persons: ALL_PERSONS.filter(p => selectedPersons.has(p)),
-      difficulty,
-      customVerbs: hasCustomVerbs ? customVerbs : undefined,
+      tenses: selectedTenses,
+      persons: selectedPersons,
+      difficulty: difficulty,
+      customVerbs: useCustomVerbs ? customVerbs : undefined,
     });
-  };
-
-  const handleSync = async () => {
-    if (savedLists.length === 0) {
-      setSyncMessage("You have no saved lists to sync.");
-      setSyncStatus('error');
-      setTimeout(() => setSyncStatus('idle'), 3000);
-      return;
-    }
-
-    setSyncStatus('syncing');
-    setSyncMessage("Gathering verbs from all saved lists...");
-
-    try {
-      const allCustomVerbs = savedLists.flatMap(list => parseVerbsFromText(list.content));
-      // FIX: Use spread syntax for better type inference with Set. This resolves an issue where the array was incorrectly typed as 'unknown[]'.
-      const uniqueVerbs = [...new Set(allCustomVerbs.map(v => v.verb.toLowerCase()))];
-      
-      setSyncMessage(`Found ${uniqueVerbs.length} unique verbs. Fetching data from Gemini...`);
-
-      const verbInfo = await getVerbInfoBatch(uniqueVerbs);
-
-      setSyncMessage(`Saving ${verbInfo.length} verbs to the offline database...`);
-      await bulkSaveVerbs(verbInfo.map(v => ({...v, infinitive: v.infinitive.toLowerCase()})));
-      
-      setSyncMessage(`Successfully synced ${verbInfo.length} verbs!`);
-      setSyncStatus('success');
-    } catch (error) {
-      console.error("Sync failed:", error);
-      setSyncMessage("An error occurred during sync. Please try again.");
-      setSyncStatus('error');
-    } finally {
-      setTimeout(() => setSyncStatus('idle'), 5000);
-    }
-  };
-
-  const canStart = selectedTenses.size > 0 && selectedPersons.size > 0;
+  }, [onStart, selectedTenses, selectedPersons, difficulty, useCustomVerbs, customVerbs]);
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-slate-800 mb-4 border-b pb-2">Choose Tenses/Moods</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-          {ALL_TENSES.map(tense => (
-            <Checkbox key={tense} label={tense} checked={selectedTenses.has(tense)} onChange={() => toggleTense(tense)} />
-          ))}
-        </div>
+        <h2 className="text-xl font-semibold text-slate-800 mb-4 border-b pb-2">Practice Settings</h2>
       </div>
-      <div>
-        <h2 className="text-xl font-semibold text-slate-800 mb-4 border-b pb-2">Choose Persons</h2>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-slate-700">Tenses</h3>
+        {Object.entries(TENSE_GROUPS).map(([groupName, tenses]) => (
+            <div key={groupName} className="p-4 border rounded-lg bg-slate-50">
+                <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-semibold">{groupName}</h4>
+                    <div>
+                        <button onClick={() => handleSelectAllTenses(tenses)} className="text-xs text-sky-600 hover:underline mr-2">All</button>
+                        <button onClick={() => handleDeselectAllTenses(tenses)} className="text-xs text-sky-600 hover:underline">None</button>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                  {tenses.map(tense => (
+                    <label key={tense} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedTenses.includes(tense)}
+                        onChange={() => handleTenseChange(tense)}
+                        className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                      />
+                      <span className="text-sm text-slate-700">{tense}</span>
+                    </label>
+                  ))}
+                </div>
+            </div>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium text-slate-700">Persons</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {ALL_PERSONS.map(person => (
-            <Checkbox key={person} label={person} checked={selectedPersons.has(person)} onChange={() => togglePerson(person)} />
+            <label key={person} className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedPersons.includes(person)}
+                onChange={() => handlePersonChange(person)}
+                className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+              />
+              <span className="text-sm text-slate-700">{person}</span>
+            </label>
           ))}
         </div>
       </div>
-       <div className={`transition-opacity ${hasCustomVerbs ? 'opacity-50' : 'opacity-100'}`}>
-        <h2 className="text-xl font-semibold text-slate-800 mb-4 border-b pb-2">Choose Difficulty</h2>
-        {hasCustomVerbs && <p className="text-sm text-slate-500 -mt-3 mb-3">Disabled when using a custom verb list.</p>}
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
+      
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium text-slate-700">Verb Difficulty</h3>
+        <div className="flex space-x-4">
           {['Beginner', 'Intermediate', 'Advanced'].map(level => (
-            <label key={level} className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${!hasCustomVerbs ? 'cursor-pointer hover:bg-sky-50' : 'cursor-not-allowed'}`}>
+            <label key={level} className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="radio"
                 name="difficulty"
                 value={level}
                 checked={difficulty === level}
-                onChange={() => setDifficulty(level)}
-                disabled={hasCustomVerbs}
-                className="h-5 w-5 text-sky-600 focus:ring-sky-500 border-gray-300 disabled:bg-slate-200 disabled:cursor-not-allowed"
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300"
+                disabled={useCustomVerbs}
               />
-              <span className={`text-slate-700 ${hasCustomVerbs ? 'text-slate-400' : ''}`}>{level}</span>
+              <span className={`text-sm ${useCustomVerbs ? 'text-slate-400' : 'text-slate-700'}`}>{level}</span>
             </label>
           ))}
         </div>
       </div>
-      <div>
-        <h2 className="text-xl font-semibold text-slate-800 mb-4 border-b pb-2">Custom Verb List <span className="text-sm font-normal text-slate-500">(Optional)</span></h2>
-        
-        <div className="mb-4 p-4 bg-slate-50 rounded-lg border">
-            <div className="flex items-start gap-4">
-              <div className="flex-grow">
-                <label htmlFor="saved-lists-select" className="block text-sm font-medium text-slate-700 mb-2">My Saved Lists</label>
-                <div className="flex gap-2">
-                    <select
-                    id="saved-lists-select"
-                    value={selectedList}
-                    onChange={handleListSelection}
-                    className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md"
-                    >
-                    <option value="">Load a list...</option>
-                    {savedLists.map(list => (
-                        <option key={list.name} value={list.name}>
-                        {list.name}
-                        </option>
-                    ))}
-                    </select>
-                    <button
-                    onClick={handleDeleteList}
-                    disabled={!selectedList}
-                    className="px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-slate-400 disabled:cursor-not-allowed"
-                    aria-label="Delete selected list"
-                    >
-                    Delete
-                    </button>
-                </div>
-              </div>
-              <div className="flex-shrink-0">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Offline Data</label>
-                  <button
-                    onClick={handleSync}
-                    disabled={syncStatus === 'syncing' || savedLists.length === 0}
-                    className="w-full px-3 py-2 bg-slate-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:bg-slate-400 disabled:cursor-not-allowed"
-                    aria-label="Sync verb data for offline use"
-                  >
-                    {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Verb Data'}
-                  </button>
-              </div>
-            </div>
-            {syncStatus !== 'idle' && (
-              <p className={`text-sm mt-2 ${syncStatus === 'error' ? 'text-red-600' : 'text-slate-600'}`}>
-                {syncMessage}
-              </p>
-            )}
-        </div>
 
-        <p className="text-sm text-slate-600 mb-3">Paste your list below, or load a saved one. The first column should be English, the second Italian.</p>
-        <textarea
-          rows={5}
-          value={textAreaContent}
-          onChange={handleTextareaChange}
-          placeholder={`to be,essere
-to have,avere`}
-          className="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 font-mono text-sm"
-          aria-label="Custom verb list input"
-        />
-        <div className="mt-3">
-          {hasCustomVerbs && (
-            <div className="flex items-center justify-between p-3 bg-sky-50 rounded-lg">
-              <p className="text-sm text-slate-700">
-                Loaded <span className="font-semibold">{customVerbs.length} verbs</span>.
-              </p>
-              <div>
-                <button onClick={handleSaveList} className="text-sm font-medium text-sky-600 hover:text-sky-800 mr-4">
-                  Save List
-                </button>
-                <button onClick={clearCustomVerbs} className="text-sm font-medium text-red-600 hover:text-red-800">
-                  Clear
-                </button>
+      <div className="space-y-3">
+          <h3 className="text-lg font-medium text-slate-700">Custom Verb List</h3>
+          <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                  type="checkbox"
+                  checked={useCustomVerbs}
+                  onChange={(e) => setUseCustomVerbs(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+              />
+              <span className="text-sm text-slate-700">Use a custom verb list for practice</span>
+          </label>
+
+          {useCustomVerbs && (
+              <div className="pl-6">
+                  <select
+                      value={selectedList}
+                      onChange={(e) => setSelectedList(e.target.value)}
+                      className="w-full max-w-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm"
+                      disabled={savedLists.length === 0}
+                  >
+                      <option value="">{savedLists.length > 0 ? 'Select a list...' : 'No saved lists found'}</option>
+                      {savedLists.map(list => <option key={list.name} value={list.name}>{list.name}</option>)}
+                  </select>
               </div>
-            </div>
           )}
-        </div>
       </div>
-      <div className="flex justify-end pt-4">
-        <button
-          onClick={handleStart}
-          disabled={!canStart}
-          className="px-8 py-3 bg-sky-600 text-white font-bold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed"
-        >
-          Start Practicing
-        </button>
+      
+      <div className="pt-4 text-right space-y-2">
+          {error && <p className="text-red-500 text-sm text-center mb-2">{error}</p>}
+          <button
+            onClick={handleStartPractice}
+            className="px-8 py-3 bg-sky-600 text-white font-bold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50 transition-all"
+          >
+            Start Practice
+          </button>
       </div>
+
+      <div className="space-y-4 pt-4 border-t">
+          <ListManager />
+          <OfflineDataManager />
+      </div>
+
     </div>
   );
 };
